@@ -206,3 +206,11 @@ add_executable(shm_listener test/shm_listener.cpp)
 target_link_libraries(shm_listener ${catkin_LIBRARIES} -lrt)
 add_dependencies(shm_listener shm_transport_generate_messages_cpp)
 
+if(CATKIN_ENABLE_TESTING)
+  find_package(rostest REQUIRED)
+  catkin_add_gtest(shm_test shm_test/shm_test.cpp)
+  if(TARGET shm_test)
+    target_link_libraries(shm_test ${catkin_LIBRARIES} -lrt)
+  endif()
+endif()
+
