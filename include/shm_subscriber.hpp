@@ -20,35 +20,48 @@ namespace shm_transport {
     private:
         SubscriberCallbackHelper(const std::string &topic, Func fp)
             : pshm_(NULL), topic_(topic), fp_(fp), sub_((ros::Subscriber *)NULL) {
+            printf("helper construct\n");
+
+            pshm_ = new boost::interprocess::managed_shared_memory(boost::interprocess::open_only, topic_.c_str());
+            boost::atomic<uint32_t> *ref_ptr = pshm_->find_or_construct<boost::atomic<uint32_t> >("ref")(0);
+            ref_ptr->fetch_add(1, boost::memory_order_relaxed);
         }
+        //int dealloc = 0;
 
     public:
         ~SubscriberCallbackHelper() {
+            printf("helper disconstruct\n");
             if (pshm_) {
                 boost::atomic<uint32_t> *ref_ptr = pshm_->find_or_construct<boost::atomic<uint32_t> >("ref")(0);
                 if (ref_ptr->fetch_sub(1, boost::memory_order_relaxed) == 1) {
-                    boost::interprocess::shared_memory_object::remove(sub_->getTopic().c_str());
-                    ROS_INFO("shm file <%s> removed\n", sub_->getTopic().c_str());
+                    if(sub_) {
+                        boost::interprocess::shared_memory_object::remove(sub_->getTopic().c_str());
+                        printf("subscriber: shm file <%s> removed\n", sub_->getTopic().c_str());
+                    }
+
                 }
                 delete pshm_;
             }
         }
 
         void callback(const std_msgs::UInt64::ConstPtr & actual_msg) {
-            if (!pshm_) {   //************************these codes should be in construct function
+            /*if (!pshm_) {   //************************these codes should be in construct function
                 pshm_ = new boost::interprocess::managed_shared_memory(boost::interprocess::open_only, topic_.c_str());
                 boost::atomic<uint32_t> *ref_ptr = pshm_->find_or_construct<boost::atomic<uint32_t> >("ref")(0);
                 ref_ptr->fetch_add(1, boost::memory_order_relaxed);
-            }
+            }*/
             // FIXME this segment should be locked
+            printf("%p + %d\n", pshm_, (int)sub_.use_count());
             uint32_t * ptr = (uint32_t *)pshm_->get_address_from_handle(actual_msg->data);
             M msg;
             ros::serialization::IStream in((uint8_t *)(ptr + 2), ptr[1]);
             ros::serialization::deserialize(in, msg);
             // FIXME is boost::atomic rely on x86?
+
             if (reinterpret_cast< boost::atomic< uint32_t > * >(ptr)->fetch_sub(1, boost::memory_order_relaxed) == 1) {
                 pshm_->deallocate(ptr);
             }
+
             fp_(boost::make_shared< M >(msg));
         }
 
@@ -64,41 +77,67 @@ namespace shm_transport {
 
     template <class M>
     class Subscriber {
-    public:
-        Subscriber(const Subscriber & s) {
-            sub_ = s.sub_;
-            phlp_ = s.phlp_;
-        }
     private:
-        Subscriber(const ros::Subscriber & sub, SubscriberCallbackHelper< M > * phlp) {
-            sub_ = boost::make_shared< ros::Subscriber >(sub);
-            phlp_ = phlp;
-            phlp_->sub_ = sub_;
+        Subscriber(const ros::Subscriber & sub_, SubscriberCallbackHelper< M > * phlp) {
+            impl_ = boost::make_shared<Impl>();
+
+            impl_->sub = boost::make_shared< ros::Subscriber >(sub_);
+            impl_->phlp = phlp;
+            impl_->phlp->sub_ = boost::make_shared< ros::Subscriber >(sub_);
+            printf("nodeHandle construct\n");
         }
 
+        class Impl {
+        public:
+            Impl() {
+                printf("impl construct\n");
+                phlp = NULL;
+            }
+
+            ~Impl() {
+                printf("impl disconstruct\n");
+                if (phlp) {
+                    delete phlp;
+                }
+                if (sub) {
+                    sub->shutdown();
+                }
+            }
+
+            boost::shared_ptr< ros::Subscriber > sub;
+            SubscriberCallbackHelper< M > * phlp;
+        };
+
+        boost::shared_ptr<Impl> impl_;
+
     public:
+        Subscriber() {
+            impl_ = boost::make_shared<Impl>();
+            printf("default construct\n");
+        }
+
         ~Subscriber() {
-            if (phlp_)
-                delete phlp_;
-            if (sub_)
-                shutdown();
+            printf("disconstruct\n");
+        }
+
+        Subscriber(const Subscriber & s) {
+            impl_ = s.impl_;
+            printf("copy construct\n");
         }
 
         void shutdown() {
-            sub_->shutdown();
+            impl_->sub->shutdown();
         }
 
         std::string getTopic() const {
-            return sub_->getTopic();
+            return impl_->sub->getTopic();
         }
 
         uint32_t getNumPublishers() const {
-            return sub_->getNumPublishers();
+            return impl_->sub->getNumPublishers();
         }
 
     protected:
-        boost::shared_ptr< ros::Subscriber > sub_;
-        SubscriberCallbackHelper< M > * phlp_;
 
         friend class Topic;
     };

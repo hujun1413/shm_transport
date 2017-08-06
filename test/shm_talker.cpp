@@ -4,22 +4,19 @@
 #include "shm_topic.hpp"
 
 #define MSGLEN (1024 * 1024 * 3)
-#define HZ (60)
+#define HZ (6)
 
 int main(int argc, char ** argv) {
     ros::init(argc, argv, "shm_talker", ros::init_options::AnonymousName);
     ros::NodeHandle n;
     shm_transport::Topic t(n);
     std::vector<shm_transport::Publisher> vec(10);
-    printf("before resize\n");
     vec.resize(10);
-    printf("after resize\n");
-    vec.push_back(t.advertise< std_msgs::String >("shm_test_topic", HZ, HZ * MSGLEN));
 
-    printf("after advertise\n");
-    //shm_transport::Publisher p = t.advertise< std_msgs::String >("shm_test_topic", HZ, HZ * MSGLEN);
-    shm_transport::Publisher p = vec[10];
-    //vec[1] = p;
+    vec[1] = t.advertise< std_msgs::String >("shm_test_topic", HZ, HZ * MSGLEN);
+
+    shm_transport::Publisher p = vec[1];
+
     ros::Rate loop_rate(HZ);
     int count = 0;
     while (ros::ok()) {
@@ -33,9 +30,8 @@ int main(int argc, char ** argv) {
         msg.data = ss.str();
 
         ROS_INFO("info: [%s]", info.c_str());
-        //vec[0].publish(msg);
-        printf("%s+%s\n", vec[10].getTopic().c_str(), p.getTopic().c_str());
-        //p.publish(msg);
+
+        p.publish(msg);
 
         ros::spinOnce();
         loop_rate.sleep();
