@@ -198,11 +198,10 @@ include_directories(
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
 
-add_executable(shm_talker test/shm_talker.cpp)
+add_executable(shm_talker test/shm_talker.cpp include/shm_topic.hpp include/shm_publisher.hpp include/shm_subscriber.hpp)
 target_link_libraries(shm_talker ${catkin_LIBRARIES} -lrt)
 add_dependencies(shm_talker shm_transport_generate_messages_cpp)
 
 add_executable(shm_listener test/shm_listener.cpp)
 target_link_libraries(shm_listener ${catkin_LIBRARIES} -lrt)
 add_dependencies(shm_listener shm_transport_generate_messages_cpp)
-

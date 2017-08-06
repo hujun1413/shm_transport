@@ -1,0 +1,13 @@
+<launch>
+<node pkg="shm_transport" type="shm_talker" name="shm_talker" output="screen" >
+
+</node>
+
+
+<node pkg="shm_transport" type="shm_listener" name="shm_listener" output="screen" >
+
+</node>
+
+
+
+</launch>
