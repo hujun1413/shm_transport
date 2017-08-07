@@ -28,7 +28,6 @@ namespace shm_transport {
 
         template < class M >
         Subscriber< M > subscribe(const std::string & topic, uint32_t queue_size, void(*fp)(const boost::shared_ptr< const M > &)) {
-            printf("in subscriber\n");
             SubscriberCallbackHelper< M > * phlp = new SubscriberCallbackHelper< M >(topic, fp);
             ros::Subscriber sub = nh_->subscribe(topic, queue_size, &SubscriberCallbackHelper< M >::callback, phlp);
             return Subscriber< M >(sub, phlp);

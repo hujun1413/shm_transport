@@ -20,44 +20,35 @@ namespace shm_transport {
     private:
         SubscriberCallbackHelper(const std::string &topic, Func fp)
             : pshm_(NULL), topic_(topic), fp_(fp), sub_((ros::Subscriber *)NULL) {
-            printf("helper construct\n");
 
-            pshm_ = new boost::interprocess::managed_shared_memory(boost::interprocess::open_only, topic_.c_str());
-            boost::atomic<uint32_t> *ref_ptr = pshm_->find_or_construct<boost::atomic<uint32_t> >("ref")(0);
-            ref_ptr->fetch_add(1, boost::memory_order_relaxed);
         }
-        //int dealloc = 0;
 
     public:
         ~SubscriberCallbackHelper() {
-            printf("helper disconstruct\n");
             if (pshm_) {
                 boost::atomic<uint32_t> *ref_ptr = pshm_->find_or_construct<boost::atomic<uint32_t> >("ref")(0);
                 if (ref_ptr->fetch_sub(1, boost::memory_order_relaxed) == 1) {
                     if(sub_) {
                         boost::interprocess::shared_memory_object::remove(sub_->getTopic().c_str());
-                        printf("subscriber: shm file <%s> removed\n", sub_->getTopic().c_str());
+                        //printf("subscriber: shm file <%s> removed\n", sub_->getTopic().c_str());
                     }
-
                 }
                 delete pshm_;
             }
         }
 
         void callback(const std_msgs::UInt64::ConstPtr & actual_msg) {
-            /*if (!pshm_) {   //************************these codes should be in construct function
+            if (!pshm_) {   //a small trick. If suscriber runs first, it will not die due to these code.
                 pshm_ = new boost::interprocess::managed_shared_memory(boost::interprocess::open_only, topic_.c_str());
                 boost::atomic<uint32_t> *ref_ptr = pshm_->find_or_construct<boost::atomic<uint32_t> >("ref")(0);
                 ref_ptr->fetch_add(1, boost::memory_order_relaxed);
-            }*/
+            }
             // FIXME this segment should be locked
-            printf("%p + %d\n", pshm_, (int)sub_.use_count());
             uint32_t * ptr = (uint32_t *)pshm_->get_address_from_handle(actual_msg->data);
             M msg;
             ros::serialization::IStream in((uint8_t *)(ptr + 2), ptr[1]);
             ros::serialization::deserialize(in, msg);
             // FIXME is boost::atomic rely on x86?
-
             if (reinterpret_cast< boost::atomic< uint32_t > * >(ptr)->fetch_sub(1, boost::memory_order_relaxed) == 1) {
                 pshm_->deallocate(ptr);
             }
@@ -84,18 +75,15 @@ namespace shm_transport {
             impl_->sub = boost::make_shared< ros::Subscriber >(sub_);
             impl_->phlp = phlp;
             impl_->phlp->sub_ = boost::make_shared< ros::Subscriber >(sub_);
-            printf("nodeHandle construct\n");
         }
 
         class Impl {
         public:
             Impl() {
-                printf("impl construct\n");
                 phlp = NULL;
             }
 
             ~Impl() {
-                printf("impl disconstruct\n");
                 if (phlp) {
                     delete phlp;
                 }
@@ -113,16 +101,13 @@ namespace shm_transport {
     public:
         Subscriber() {
             impl_ = boost::make_shared<Impl>();
-            printf("default construct\n");
         }
 
         ~Subscriber() {
-            printf("disconstruct\n");
         }
 
         Subscriber(const Subscriber & s) {
             impl_ = s.impl_;
-            printf("copy construct\n");
         }
 
         void shutdown() {

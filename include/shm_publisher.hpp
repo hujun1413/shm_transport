@@ -32,7 +32,7 @@ namespace shm_transport {
                         if(pub)
                         {
                             boost::interprocess::shared_memory_object::remove(pub->getTopic().c_str());
-                            printf("publisher: shm file <%s>　removed\n", pub->getTopic().c_str());
+                            //printf("publisher: shm file <%s>　removed\n", pub->getTopic().c_str());
                         }
                     }
                     delete pshm;
@@ -68,7 +68,7 @@ namespace shm_transport {
             if (impl_->pub->getNumSubscribers() == 0)
                 return;
 
-            uint32_t serlen = ros::serialization::serializationLength(msg);
+            uint32_t serlen = ros::serialization::serializationLength(msg);  //BUGFIX TODO when a subscriber exit, there may be one msg left in shm
             uint32_t * ptr = (uint32_t *)impl_->pshm->allocate(sizeof(uint32_t) * 2 + serlen);
             ptr[0] = impl_->pub->getNumSubscribers();
             ptr[1] = serlen;

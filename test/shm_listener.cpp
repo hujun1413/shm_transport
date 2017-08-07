@@ -14,9 +14,8 @@ int main(int argc, char ** argv) {
     shm_transport::Topic t(n);
     //shm_transport::Subscriber< std_msgs::String > s = t.subscribe("shm_test_topic", 60, chatterCallback);
     std::vector<shm_transport::Subscriber< std_msgs::String> > vec(3);
-    printf("here\n");
-    vec[0] = t.subscribe< std_msgs::String >("shm_test_topic", 6, chatterCallback);
-    //vec[1] = t.subscribe< std_msgs::String >("shm_test_topic", 6, chatterCallback);
+    vec[0] = t.subscribe< std_msgs::String >("shm_test_topic", 60, chatterCallback);
+    //vec[1] = t.subscribe< std_msgs::String >("shm_test_topic", 60, chatterCallback);
 
     //vec.push_back(t.subscribe< std_msgs::String >("shm_test_topic", 60, chatterCallback));
     //vec.push_back(t.subscribe< std_msgs::String >("shm_test_topi", 60, chatterCallback));
