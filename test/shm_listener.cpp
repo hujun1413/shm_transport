@@ -1,6 +1,5 @@
 #include "ros/ros.h"
 #include "std_msgs/String.h"
-#include "shm_topic.hpp"
 
 void chatterCallback(const std_msgs::String::ConstPtr & msg) {
   char str[21] = {'\0'};
@@ -9,10 +8,10 @@ void chatterCallback(const std_msgs::String::ConstPtr & msg) {
 }
 
 int main(int argc, char ** argv) {
-  ros::init(argc, argv, "shm_listener", ros::init_options::AnonymousName);
+  ros::init(argc, argv, "listener", ros::init_options::AnonymousName);
   ros::NodeHandle n;
-  shm_transport::Topic t(n);
-  shm_transport::Subscriber< std_msgs::String > s = t.subscribe("shm_test_topic", 60, chatterCallback);
+  ros::Subscriber s = n.subscribe("test_topic", 60, chatterCallback);
+  ros::Subscriber s1 = n.subscribe("test_topic", 60, chatterCallback);
   ros::spin();
   return 0;
 }
